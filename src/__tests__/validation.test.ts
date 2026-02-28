@@ -1,6 +1,5 @@
 import {
   WardrobeItemCreateSchema,
-  OutfitCreateSchema,
   RatingCreateSchema,
   AIOutfitRankingSchema,
   CalendarEventCreateSchema,

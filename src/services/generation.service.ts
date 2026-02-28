@@ -84,8 +84,9 @@ export async function generateOutfitRecommendations(
         aestheticScore: aiResult.aestheticScore,
         confidencePrediction: aiResult.confidencePrediction,
       };
-    } catch {
+    } catch (error) {
       // AI failed, fall back to deterministic ranking
+      console.warn("AI re-ranking failed, using deterministic fallback:", error);
       return {
         combinations: topCombinations,
         selectedIndex: 0,

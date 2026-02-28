@@ -43,7 +43,22 @@ export async function GET(request: NextRequest) {
     // Map existing outfits to schedule entries
     const existingSchedule = existingOutfits.map((outfit) => ({
       date: outfit.scheduledFor ? formatDate(outfit.scheduledFor) : "",
-      outfit: null,
+      outfit: outfit.items.length > 0
+        ? {
+            items: outfit.items.map((oi) => ({
+              itemId: oi.wardrobeItemId,
+              category: oi.wardrobeItem.category,
+              score: 0,
+              daysSinceWorn: 0,
+              timesWorn: oi.wardrobeItem.timesWorn,
+              formalityScore: oi.wardrobeItem.formalityScore,
+              dominantColor: oi.wardrobeItem.dominantColor,
+            })),
+            totalScore: outfit.aestheticScore ?? 0,
+            colorHarmonyScore: 0,
+            formalityCoherence: 0,
+          }
+        : null,
       isLocked: outfit.isAccepted,
     }));
 

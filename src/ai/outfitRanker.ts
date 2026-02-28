@@ -103,7 +103,8 @@ export async function rankOutfitsWithAI(
   // First attempt
   try {
     return await callAI(prompt);
-  } catch {
+  } catch (firstError) {
+    console.warn("AI ranking first attempt failed, retrying:", firstError);
     // Retry once on failure
     try {
       return await callAI(prompt);
