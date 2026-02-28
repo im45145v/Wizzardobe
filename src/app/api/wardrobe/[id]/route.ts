@@ -9,11 +9,12 @@ import { WardrobeItemUpdateSchema } from "@/types";
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth();
-    const item = await getItemById(params.id, user.id);
+    const { id } = await params;
+    const item = await getItemById(id, user.id);
 
     if (!item) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
@@ -30,10 +31,11 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth();
+    const { id } = await params;
     const body = await request.json();
 
     const validation = WardrobeItemUpdateSchema.safeParse(body);
@@ -44,7 +46,7 @@ export async function PATCH(
       );
     }
 
-    const result = await updateItem(params.id, user.id, validation.data);
+    const result = await updateItem(id, user.id, validation.data);
     if (result.count === 0) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
@@ -60,13 +62,14 @@ export async function PATCH(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth();
+    const { id } = await params;
 
     // Toggle active instead of hard delete
-    const item = await toggleItemActive(params.id, user.id);
+    const item = await toggleItemActive(id, user.id);
     if (!item) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
