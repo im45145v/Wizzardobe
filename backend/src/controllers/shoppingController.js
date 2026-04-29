@@ -62,15 +62,30 @@ async function addToWishlist(req, res) {
 
 async function updateWishlistItem(req, res) {
   try {
-    const allowedFields = ['name', 'category', 'reason', 'link', 'estimatedPrice', 'priority', 'status', 'pairsWithItems'];
-    const updates = {};
-    for (const key of allowedFields) {
-      if (Object.prototype.hasOwnProperty.call(req.body, key)) updates[key] = req.body[key];
-    }
+    const body = req.body;
     const validStatuses = ['wishlist', 'purchased', 'rejected'];
-    if (updates.status !== undefined && !validStatuses.includes(updates.status)) {
-      return errorResponse(res, 'Invalid status value', 400);
+    const validCategories = ['top', 'bottom', 'shoes', 'accessory', 'outerwear', 'innerwear', 'other'];
+    const validPriorities = ['low', 'medium', 'high'];
+
+    const updates = {};
+    if (body.name !== undefined) updates.name = String(body.name).slice(0, 200);
+    if (body.reason !== undefined) updates.reason = String(body.reason).slice(0, 500);
+    if (body.link !== undefined) updates.link = String(body.link).slice(0, 500);
+    if (body.estimatedPrice !== undefined) updates.estimatedPrice = Number(body.estimatedPrice) || 0;
+    if (body.pairsWithItems !== undefined) updates.pairsWithItems = Array.isArray(body.pairsWithItems) ? body.pairsWithItems.map(String) : [];
+
+    const catIdx = validCategories.indexOf(body.category);
+    if (body.category !== undefined && catIdx >= 0) updates.category = validCategories[catIdx];
+
+    const statusIdx = validStatuses.indexOf(body.status);
+    if (body.status !== undefined) {
+      if (statusIdx < 0) return errorResponse(res, 'Invalid status value', 400);
+      updates.status = validStatuses[statusIdx];
     }
+
+    const priIdx = validPriorities.indexOf(body.priority);
+    if (body.priority !== undefined && priIdx >= 0) updates.priority = validPriorities[priIdx];
+
     const item = await ShoppingItem.findOneAndUpdate(
       { _id: req.params.id, userId: req.user._id },
       updates,
