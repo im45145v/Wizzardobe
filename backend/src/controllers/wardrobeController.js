@@ -67,13 +67,17 @@ async function getCloths(req, res) {
     const { category, color, status, search, page = 1, limit = 20 } = req.query;
     const query = { userId: req.user._id, isActive: true };
 
-    if (category) query.category = category;
-    if (color) query.color = new RegExp(color, 'i');
-    if (status) query.status = status;
+    const validCategories = ['top', 'bottom', 'shoes', 'accessory', 'outerwear', 'innerwear'];
+    const validStatuses = ['clean', 'dirty', 'in_wash'];
+
+    if (category && validCategories.includes(category)) query.category = category;
+    if (color) query.color = new RegExp(color.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    if (status && validStatuses.includes(status)) query.status = status;
     if (search) {
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
-        { name: new RegExp(search, 'i') },
-        { brand: new RegExp(search, 'i') },
+        { name: new RegExp(escaped, 'i') },
+        { brand: new RegExp(escaped, 'i') },
       ];
     }
 
@@ -109,7 +113,7 @@ async function updateCloth(req, res) {
     const cloth = await Cloth.findOne({ _id: req.params.id, userId: req.user._id, isActive: true });
     if (!cloth) return errorResponse(res, 'Cloth not found', 404);
 
-    const allowedFields = ['name', 'category', 'color', 'fabric', 'brand', 'occasionTags', 'season', 'condition', 'purchasePrice', 'purchaseDate', 'notes'];
+    const allowedFields = ['name', 'category', 'color', 'fabric', 'brand', 'occasionTags', 'season', 'condition', 'purchasePrice', 'purchaseDate'];
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) cloth[field] = req.body[field];
     });

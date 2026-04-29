@@ -3,15 +3,26 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
 const mongoose = require('mongoose');
 
 const app = express();
+
+// Global rate limiter: 200 requests per 15 minutes per IP
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests, please try again later.' },
+});
 
 app.use(helmet());
 app.use(cors({ origin: process.env.FRONTEND_URL || '*', credentials: true }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(globalLimiter);
 
 app.use('/uploads', express.static('uploads'));
 

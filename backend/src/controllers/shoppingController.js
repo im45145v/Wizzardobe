@@ -24,7 +24,8 @@ async function getWishlist(req, res) {
   try {
     const { status, page = 1, limit = 20 } = req.query;
     const query = { userId: req.user._id };
-    if (status) query.status = status;
+    const validStatuses = ['wishlist', 'purchased', 'rejected'];
+    if (status && validStatuses.includes(status)) query.status = status;
 
     const skip = (Number(page) - 1) * Number(limit);
     const [items, total] = await Promise.all([

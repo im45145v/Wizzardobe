@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 const Cloth = require('../models/Cloth');
 const Outfit = require('../models/Outfit');
 const Suggestion = require('../models/Suggestion');
@@ -223,7 +224,14 @@ async function judgeOutfit(req, res) {
 
     const { mode = 'balanced' } = req.body;
 
-    const imageBuffer = fs.readFileSync(req.file.path);
+    // req.file.path is set by multer; validate it stays within the uploads directory
+    const uploadsDir = path.resolve(process.cwd(), 'uploads');
+    const filePath = path.resolve(req.file.path);
+    if (!filePath.startsWith(uploadsDir)) {
+      return errorResponse(res, 'Invalid file path', 400);
+    }
+
+    const imageBuffer = fs.readFileSync(filePath);
     const imageBase64 = imageBuffer.toString('base64');
 
     if (!req.user.openaiApiKey) {

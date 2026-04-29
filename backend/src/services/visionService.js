@@ -30,9 +30,14 @@ async function autoTagCloth(apiKey, imageUrl) {
       return { category: 'top', color: 'unknown', style: 'casual', fabric: 'unknown', occasion: 'casual', confidence: 0 };
     }
   } else {
-    // Local file — read as base64
+    // Local file — resolve and validate it stays within uploads directory
     const fs = require('fs');
-    const filePath = imageUrl.startsWith('/') ? imageUrl : `${process.cwd()}/${imageUrl}`;
+    const path = require('path');
+    const uploadsDir = path.resolve(process.cwd(), 'uploads');
+    const filePath = path.resolve(imageUrl.startsWith('/') ? imageUrl : path.join(process.cwd(), imageUrl));
+    if (!filePath.startsWith(uploadsDir)) {
+      throw new Error('Invalid file path: must be within uploads directory');
+    }
     imageBase64 = fs.readFileSync(filePath).toString('base64');
     return openaiService.analyzeClothImage(apiKey, imageBase64);
   }

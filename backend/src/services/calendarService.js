@@ -86,7 +86,7 @@ async function createOutfitEvent(userId, date, outfitItems) {
   const auth = await getAuthenticatedClient(userId);
   const calendar = google.calendar({ version: 'v3', auth });
 
-  const description = `Outfit planned via WizzardoAI:\n${outfitItems.map(i => `- ${i.clothName || i.name}`).join('\n')}`;
+  const description = `Outfit planned via WardrobeAI:\n${outfitItems.map(i => `- ${i.clothName || i.name}`).join('\n')}`;
   const eventDate = new Date(date);
 
   const event = {
