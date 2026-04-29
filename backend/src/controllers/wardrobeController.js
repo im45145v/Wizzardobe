@@ -69,10 +69,12 @@ async function getCloths(req, res) {
 
     const validCategories = ['top', 'bottom', 'shoes', 'accessory', 'outerwear', 'innerwear'];
     const validStatuses = ['clean', 'dirty', 'in_wash'];
+    const catIdx = validCategories.indexOf(category);
+    const statusIdx = validStatuses.indexOf(status);
 
-    if (category && validCategories.includes(category)) query.category = category;
+    if (category && catIdx >= 0) query.category = validCategories[catIdx];
     if (color) query.color = new RegExp(color.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    if (status && validStatuses.includes(status)) query.status = status;
+    if (status && statusIdx >= 0) query.status = validStatuses[statusIdx];
     if (search) {
       const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [

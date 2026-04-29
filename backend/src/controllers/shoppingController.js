@@ -25,7 +25,8 @@ async function getWishlist(req, res) {
     const { status, page = 1, limit = 20 } = req.query;
     const query = { userId: req.user._id };
     const validStatuses = ['wishlist', 'purchased', 'rejected'];
-    if (status && validStatuses.includes(status)) query.status = status;
+    const statusIdx = validStatuses.indexOf(status);
+    if (status && statusIdx >= 0) query.status = validStatuses[statusIdx];
 
     const skip = (Number(page) - 1) * Number(limit);
     const [items, total] = await Promise.all([
@@ -61,9 +62,18 @@ async function addToWishlist(req, res) {
 
 async function updateWishlistItem(req, res) {
   try {
+    const allowedFields = ['name', 'category', 'reason', 'link', 'estimatedPrice', 'priority', 'status', 'pairsWithItems'];
+    const updates = {};
+    for (const key of allowedFields) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) updates[key] = req.body[key];
+    }
+    const validStatuses = ['wishlist', 'purchased', 'rejected'];
+    if (updates.status !== undefined && !validStatuses.includes(updates.status)) {
+      return errorResponse(res, 'Invalid status value', 400);
+    }
     const item = await ShoppingItem.findOneAndUpdate(
       { _id: req.params.id, userId: req.user._id },
-      req.body,
+      updates,
       { new: true, runValidators: true }
     );
     if (!item) return errorResponse(res, 'Item not found', 404);
