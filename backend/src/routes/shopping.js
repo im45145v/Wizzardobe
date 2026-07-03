@@ -5,6 +5,7 @@ const { protect } = require('../middleware/authMiddleware');
 
 router.use(protect);
 
+router.get('/gaps', analyzeGaps);
 router.get('/analyze', analyzeGaps);
 router.get('/', getWishlist);
 router.post('/', addToWishlist);

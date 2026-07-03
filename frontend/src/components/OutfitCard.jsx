@@ -23,7 +23,7 @@ export default function OutfitCard({ suggestion }) {
     },
   })
 
-  const items = suggestion.items || []
+  const items = suggestion.outfitItems || suggestion.items || []
 
   return (
     <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4">
@@ -40,13 +40,13 @@ export default function OutfitCard({ suggestion }) {
       <div className="flex flex-wrap gap-2 mb-3">
         {items.map((item, i) => (
           <span key={i} className="text-xs px-2 py-1 bg-[#2d2d44] text-gray-300 rounded-full">
-            {typeof item === 'string' ? item : item.name}
+            {typeof item === 'string' ? item : item.clothName || item.name}
           </span>
         ))}
       </div>
 
-      {suggestion.reasoning && (
-        <p className="text-xs text-gray-400 mb-3 line-clamp-2">{suggestion.reasoning}</p>
+      {(suggestion.aiReasoning || suggestion.reasoning) && (
+        <p className="text-xs text-gray-400 mb-3 line-clamp-2">{suggestion.aiReasoning || suggestion.reasoning}</p>
       )}
 
       <button

@@ -4,6 +4,8 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
 })
 
+let refreshPromise = null
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('wardrobeai_token')
   if (token) {
@@ -13,10 +15,35 @@ api.interceptors.request.use((config) => {
 })
 
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  (response) => {
+    if (response.data && Object.prototype.hasOwnProperty.call(response.data, 'data')) {
+      response.message = response.data.message
+      response.data = response.data.data
+    }
+    return response
+  },
+  async (error) => {
+    const original = error.config
+    if (error.response?.status === 401 && !original?._retry) {
+      const refreshToken = localStorage.getItem('wardrobeai_refresh_token')
+      if (refreshToken) {
+        original._retry = true
+        try {
+          refreshPromise = refreshPromise || axios.post(`${api.defaults.baseURL}/api/auth/refresh`, { refreshToken })
+          const res = await refreshPromise
+          refreshPromise = null
+          const token = res.data?.data?.token || res.data?.token
+          if (token) {
+            localStorage.setItem('wardrobeai_token', token)
+            original.headers.Authorization = `Bearer ${token}`
+            return api(original)
+          }
+        } catch {
+          refreshPromise = null
+        }
+      }
       localStorage.removeItem('wardrobeai_token')
+      localStorage.removeItem('wardrobeai_refresh_token')
       window.location.href = '/login'
     }
     return Promise.reject(error)
@@ -39,13 +66,20 @@ export const updateCloth = (id, data) => api.put(`/api/wardrobe/${id}`, data)
 export const deleteCloth = (id) => api.delete(`/api/wardrobe/${id}`)
 export const markWorn = (id) => api.post(`/api/wardrobe/${id}/worn`)
 export const updateClothStatus = (id, status) => api.put(`/api/wardrobe/${id}/status`, { status })
+export const getGroups = () => api.get('/api/wardrobe/groups')
+export const createGroup = (data) => api.post('/api/wardrobe/groups', data)
+export const updateGroup = (id, data) => api.put(`/api/wardrobe/groups/${id}`, data)
+export const deleteGroup = (id) => api.delete(`/api/wardrobe/groups/${id}`)
 
 // Outfits
 export const suggestOutfit = (data) => api.post('/api/outfits/suggest', data)
 export const getSuggestions = () => api.get('/api/outfits/suggestions')
 export const rateSuggestion = (id, rating) => api.put(`/api/outfits/suggestions/${id}/rate`, { rating })
 export const wearSuggestion = (id) => api.post(`/api/outfits/suggestions/${id}/wear`)
+export const visualizeSuggestion = (id) => api.post(`/api/outfits/suggestions/${id}/visualize`)
 export const judgeOutfit = (formData) => api.post('/api/outfits/judge', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+export const getOutfits = () => api.get('/api/outfits')
+export const saveOutfit = (data) => api.post('/api/outfits', data)
 
 // Laundry
 export const getLaundry = () => api.get('/api/laundry')
@@ -72,9 +106,9 @@ export const buildCapsule = (data) => api.post('/api/stylist/capsule', data)
 export const getSeasonalRefresh = () => api.get('/api/stylist/seasonal-refresh')
 
 // Calendar
-export const getCalendarAuthUrl = () => api.get('/api/calendar/auth-url')
+export const getCalendarAuthUrl = () => api.get('/api/calendar/auth')
 export const getCalendarEvents = (params) => api.get('/api/calendar/events', { params })
-export const createOutfitEvent = (data) => api.post('/api/calendar/outfit-event', data)
+export const createOutfitEvent = (data) => api.post('/api/calendar/events', data)
 export const getWeeklyPlan = () => api.get('/api/calendar/weekly-plan')
 
 export default api

@@ -1,21 +1,37 @@
-const path = require('path');
 const Cloth = require('../models/Cloth');
-const LaundryLog = require('../models/LaundryLog');
+const WardrobeGroup = require('../models/WardrobeGroup');
 const { successResponse, errorResponse } = require('../utils/helpers');
 const { decrypt } = require('../services/encryptionService');
 const visionService = require('../services/visionService');
+const { markClothWorn, updateClothLaundryStatus } = require('../services/wearService');
+
+const validCategories = ['top', 'bottom', 'shoes', 'accessory', 'outerwear', 'innerwear'];
+
+function parseArrayField(field) {
+  if (field === undefined || field === null || field === '') return undefined;
+  if (Array.isArray(field)) return field;
+  try {
+    const parsed = JSON.parse(field);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch {
+    return String(field)
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+  }
+}
 
 async function addCloth(req, res) {
   try {
     const {
       name, category, color, fabric, brand,
-      occasionTags, season, condition, purchasePrice, purchaseDate,
+      occasionTags, season, tags, groupIds, condition, purchasePrice, purchaseDate,
+      maxWearsBeforeLaundry, disabled, disabledReason,
     } = req.body;
 
     if (!name) return errorResponse(res, 'Name is required', 400);
     if (!category) return errorResponse(res, 'Category is required', 400);
 
-    const validCategories = ['top', 'bottom', 'shoes', 'accessory', 'outerwear', 'innerwear'];
     if (!validCategories.includes(category)) return errorResponse(res, 'Invalid category', 400);
 
     let imageUrl = null;
@@ -27,18 +43,12 @@ async function addCloth(req, res) {
       if (req.user.openaiApiKey) {
         try {
           const decryptedKey = decrypt(req.user.openaiApiKey);
-          autoTagData = await visionService.autoTagCloth(decryptedKey, path.join(process.cwd(), imageUrl));
+          autoTagData = await visionService.autoTagCloth(decryptedKey, req.file.path);
         } catch (e) {
           console.error('AutoTag failed:', e.message);
         }
       }
     }
-
-    const parseArrayField = (field) => {
-      if (!field) return undefined;
-      if (Array.isArray(field)) return field;
-      try { return JSON.parse(field); } catch { return [field]; }
-    };
 
     const cloth = await Cloth.create({
       userId: req.user._id,
@@ -49,9 +59,14 @@ async function addCloth(req, res) {
       brand,
       occasionTags: parseArrayField(occasionTags),
       season: parseArrayField(season),
+      tags: parseArrayField(tags),
+      groupIds: parseArrayField(groupIds),
       condition,
       purchasePrice: purchasePrice ? Number(purchasePrice) : undefined,
       purchaseDate,
+      maxWearsBeforeLaundry: maxWearsBeforeLaundry ? Number(maxWearsBeforeLaundry) : undefined,
+      disabled: disabled === true || disabled === 'true',
+      disabledReason,
       imageUrl,
       autoTagData,
     });
@@ -64,10 +79,9 @@ async function addCloth(req, res) {
 
 async function getCloths(req, res) {
   try {
-    const { category, color, status, search, page = 1, limit = 20 } = req.query;
+    const { category, color, status, search, tag, groupId, includeDisabled, page = 1, limit = 20 } = req.query;
     const query = { userId: req.user._id, isActive: true };
 
-    const validCategories = ['top', 'bottom', 'shoes', 'accessory', 'outerwear', 'innerwear'];
     const validStatuses = ['clean', 'dirty', 'in_wash'];
     const catIdx = validCategories.indexOf(category);
     const statusIdx = validStatuses.indexOf(status);
@@ -75,6 +89,9 @@ async function getCloths(req, res) {
     if (category && catIdx >= 0) query.category = validCategories[catIdx];
     if (color) query.color = new RegExp(color.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     if (status && statusIdx >= 0) query.status = validStatuses[statusIdx];
+    if (tag) query.tags = tag;
+    if (groupId) query.groupIds = groupId;
+    if (includeDisabled !== 'true') query.disabled = { $ne: true };
     if (search) {
       const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
@@ -115,9 +132,20 @@ async function updateCloth(req, res) {
     const cloth = await Cloth.findOne({ _id: req.params.id, userId: req.user._id, isActive: true });
     if (!cloth) return errorResponse(res, 'Cloth not found', 404);
 
-    const allowedFields = ['name', 'category', 'color', 'fabric', 'brand', 'occasionTags', 'season', 'condition', 'purchasePrice', 'purchaseDate'];
+    const allowedFields = [
+      'name', 'category', 'color', 'fabric', 'brand', 'occasionTags', 'season', 'tags', 'groupIds',
+      'condition', 'purchasePrice', 'purchaseDate', 'maxWearsBeforeLaundry', 'disabled', 'disabledReason',
+    ];
     allowedFields.forEach((field) => {
-      if (req.body[field] !== undefined) cloth[field] = req.body[field];
+      if (req.body[field] !== undefined) {
+        if (['occasionTags', 'season', 'tags', 'groupIds'].includes(field)) {
+          cloth[field] = parseArrayField(req.body[field]) || [];
+        } else if (field === 'maxWearsBeforeLaundry' || field === 'purchasePrice') {
+          cloth[field] = req.body[field] === '' ? undefined : Number(req.body[field]);
+        } else {
+          cloth[field] = req.body[field];
+        }
+      }
     });
 
     await cloth.save();
@@ -145,24 +173,7 @@ async function markWorn(req, res) {
     const cloth = await Cloth.findOne({ _id: req.params.id, userId: req.user._id, isActive: true });
     if (!cloth) return errorResponse(res, 'Cloth not found', 404);
 
-    cloth.lastWornDate = new Date();
-    cloth.wearCount += 1;
-
-    const settings = req.user.settings || {};
-    const wearBeforeDirty = settings.wearBeforeDirty || { top: 3, bottom: 3, innerwear: 1, shoes: 5, outerwear: 7 };
-    const threshold = wearBeforeDirty[cloth.category] || 3;
-
-    if (cloth.wearCount % threshold === 0) {
-      cloth.status = 'dirty';
-      await LaundryLog.create({
-        userId: req.user._id,
-        clothId: cloth._id,
-        status: 'dirty',
-        markedAt: new Date(),
-      });
-    }
-
-    await cloth.save();
+    await markClothWorn(cloth, req.user);
     return successResponse(res, { cloth }, 'Marked as worn');
   } catch (err) {
     return errorResponse(res, err.message, 500);
@@ -178,30 +189,73 @@ async function markStatus(req, res) {
     const cloth = await Cloth.findOne({ _id: req.params.id, userId: req.user._id, isActive: true });
     if (!cloth) return errorResponse(res, 'Cloth not found', 404);
 
-    const prevStatus = cloth.status;
-    cloth.status = status;
-
-    if (status === 'clean' && prevStatus !== 'clean') {
-      cloth.daysOutsideClean = 0;
-      await LaundryLog.findOneAndUpdate(
-        { clothId: cloth._id, status: { $in: ['dirty', 'in_wash'] }, resolvedAt: null },
-        { status: 'clean', resolvedAt: new Date() },
-        { sort: { createdAt: -1 } }
-      );
-    } else if (status !== 'clean') {
-      await LaundryLog.create({
-        userId: req.user._id,
-        clothId: cloth._id,
-        status,
-        markedAt: new Date(),
-      });
-    }
-
-    await cloth.save();
+    await updateClothLaundryStatus(cloth, req.user, status);
     return successResponse(res, { cloth }, 'Status updated');
   } catch (err) {
     return errorResponse(res, err.message, 500);
   }
 }
 
-module.exports = { addCloth, getCloths, getCloth, updateCloth, deleteCloth, markWorn, markStatus };
+async function getGroups(req, res) {
+  try {
+    const groups = await WardrobeGroup.find({ userId: req.user._id }).sort({ type: 1, name: 1 });
+    return successResponse(res, { groups }, 'Groups fetched');
+  } catch (err) {
+    return errorResponse(res, err.message, 500);
+  }
+}
+
+async function createGroup(req, res) {
+  try {
+    const { name, type = 'custom', color, notes } = req.body;
+    if (!name) return errorResponse(res, 'Group name is required', 400);
+    const group = await WardrobeGroup.create({ userId: req.user._id, name, type, color, notes });
+    return successResponse(res, { group }, 'Group created', 201);
+  } catch (err) {
+    if (err.code === 11000) return errorResponse(res, 'A group with that name already exists', 409);
+    return errorResponse(res, err.message, 500);
+  }
+}
+
+async function updateGroup(req, res) {
+  try {
+    const updates = {};
+    ['name', 'type', 'color', 'notes'].forEach((field) => {
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
+    });
+    const group = await WardrobeGroup.findOneAndUpdate(
+      { _id: req.params.groupId, userId: req.user._id },
+      updates,
+      { new: true, runValidators: true }
+    );
+    if (!group) return errorResponse(res, 'Group not found', 404);
+    return successResponse(res, { group }, 'Group updated');
+  } catch (err) {
+    return errorResponse(res, err.message, 500);
+  }
+}
+
+async function deleteGroup(req, res) {
+  try {
+    const group = await WardrobeGroup.findOneAndDelete({ _id: req.params.groupId, userId: req.user._id });
+    if (!group) return errorResponse(res, 'Group not found', 404);
+    await Cloth.updateMany({ userId: req.user._id, groupIds: group._id }, { $pull: { groupIds: group._id } });
+    return successResponse(res, {}, 'Group deleted');
+  } catch (err) {
+    return errorResponse(res, err.message, 500);
+  }
+}
+
+module.exports = {
+  addCloth,
+  getCloths,
+  getCloth,
+  updateCloth,
+  deleteCloth,
+  markWorn,
+  markStatus,
+  getGroups,
+  createGroup,
+  updateGroup,
+  deleteGroup,
+};

@@ -88,12 +88,14 @@ async function createOutfitEvent(userId, date, outfitItems) {
 
   const description = `Outfit planned via WardrobeAI:\n${outfitItems.map(i => `- ${i.clothName || i.name}`).join('\n')}`;
   const eventDate = new Date(date);
+  const endDate = new Date(eventDate);
+  endDate.setDate(endDate.getDate() + 1);
 
   const event = {
-    summary: '👗 Planned Outfit',
+    summary: 'Planned Outfit',
     description,
     start: { date: eventDate.toISOString().split('T')[0] },
-    end: { date: eventDate.toISOString().split('T')[0] },
+    end: { date: endDate.toISOString().split('T')[0] },
   };
 
   const response = await calendar.events.insert({ calendarId: 'primary', resource: event });

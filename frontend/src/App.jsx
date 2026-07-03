@@ -6,10 +6,15 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
-
-const Placeholder = ({ name }) => (
-  <div className="p-8 text-white text-2xl font-bold">{name} Page</div>
-)
+import Wardrobe from './pages/Wardrobe'
+import ClothForm from './pages/ClothForm'
+import OutfitSuggest from './pages/OutfitSuggest'
+import OutfitJudge from './pages/OutfitJudge'
+import Laundry from './pages/Laundry'
+import Calendar from './pages/Calendar'
+import Shopping from './pages/Shopping'
+import Analytics from './pages/Analytics'
+import Settings from './pages/Settings'
 
 const ProtectedRoute = ({ children }) => {
   const { user, isLoading } = useContext(AuthContext)
@@ -32,15 +37,16 @@ export default function App() {
         <Route path="/onboarding" element={<Onboarding />} />
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/wardrobe" element={<Placeholder name="Wardrobe" />} />
-          <Route path="/wardrobe/add" element={<Placeholder name="Add Cloth" />} />
-          <Route path="/outfits/suggest" element={<Placeholder name="Outfit Suggest" />} />
-          <Route path="/outfits/judge" element={<Placeholder name="Outfit Judge" />} />
-          <Route path="/laundry" element={<Placeholder name="Laundry" />} />
-          <Route path="/calendar" element={<Placeholder name="Calendar" />} />
-          <Route path="/shopping" element={<Placeholder name="Shopping" />} />
-          <Route path="/analytics" element={<Placeholder name="Analytics" />} />
-          <Route path="/settings" element={<Placeholder name="Settings" />} />
+          <Route path="/wardrobe" element={<Wardrobe />} />
+          <Route path="/wardrobe/add" element={<ClothForm />} />
+          <Route path="/wardrobe/edit/:id" element={<ClothForm />} />
+          <Route path="/outfits/suggest" element={<OutfitSuggest />} />
+          <Route path="/outfits/judge" element={<OutfitJudge />} />
+          <Route path="/laundry" element={<Laundry />} />
+          <Route path="/calendar" element={<Calendar />} />
+          <Route path="/shopping" element={<Shopping />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>
     </BrowserRouter>

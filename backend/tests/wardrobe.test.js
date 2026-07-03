@@ -336,4 +336,35 @@ describe('Wardrobe', () => {
     expect(res.body.data.cloth.wearCount).toBe(1);
     expect(res.body.data.cloth.lastWornDate).toBeDefined();
   });
+
+  test('wearsSinceWash marks item dirty at threshold and clean resets cycle count', async () => {
+    const createRes = await request(app)
+      .post('/api/wardrobe')
+      .set('Authorization', `Bearer ${authToken}`)
+      .field('name', 'Threshold Shirt')
+      .field('category', 'top');
+
+    const clothId = createRes.body.data.cloth._id;
+
+    await request(app).post(`/api/wardrobe/${clothId}/worn`).set('Authorization', `Bearer ${authToken}`);
+    await request(app).post(`/api/wardrobe/${clothId}/worn`).set('Authorization', `Bearer ${authToken}`);
+    const dirtyRes = await request(app)
+      .post(`/api/wardrobe/${clothId}/worn`)
+      .set('Authorization', `Bearer ${authToken}`);
+
+    expect(dirtyRes.status).toBe(200);
+    expect(dirtyRes.body.data.cloth.wearCount).toBe(3);
+    expect(dirtyRes.body.data.cloth.wearsSinceWash).toBe(3);
+    expect(dirtyRes.body.data.cloth.status).toBe('dirty');
+
+    const cleanRes = await request(app)
+      .put(`/api/wardrobe/${clothId}/status`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ status: 'clean' });
+
+    expect(cleanRes.status).toBe(200);
+    expect(cleanRes.body.data.cloth.status).toBe('clean');
+    expect(cleanRes.body.data.cloth.wearsSinceWash).toBe(0);
+    expect(cleanRes.body.data.cloth.wearCount).toBe(3);
+  });
 });

@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Navbar from './Navbar'
-import { LayoutDashboard, Shirt, Sparkles, Camera, Droplets, CalendarDays, ShoppingBag, BarChart3, Settings } from 'lucide-react'
-import { NavLink } from 'react-router-dom'
+import { LayoutDashboard, Shirt, Sparkles, Droplets, Settings } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const pageTitles = {
@@ -27,7 +26,7 @@ const mobileNav = [
   { to: '/settings', icon: Settings },
 ]
 
-export default function Layout({ children }) {
+export default function Layout() {
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const title = pageTitles[location.pathname] || 'Wizzardobe'
@@ -58,7 +57,7 @@ export default function Layout({ children }) {
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar title={title} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">
-          {children}
+          <Outlet />
         </main>
       </div>
 

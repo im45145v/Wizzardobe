@@ -20,6 +20,7 @@ const updateProfileSchema = Joi.object({
     stylePreference: Joi.string().valid('streetwear', 'minimalist', 'formal', 'casual'),
     occasions: Joi.array().items(Joi.string()),
     location: Joi.string(),
+    profileImageUrl: Joi.string().allow(''),
   }),
   settings: Joi.object({
     cooldownDays: Joi.number().integer().min(0),
@@ -41,6 +42,7 @@ const onboardingSchema = Joi.object({
   stylePreference: Joi.string().valid('streetwear', 'minimalist', 'formal', 'casual'),
   occasions: Joi.array().items(Joi.string()),
   location: Joi.string(),
+  profileImageUrl: Joi.string().allow(''),
 });
 
 const addClothSchema = Joi.object({

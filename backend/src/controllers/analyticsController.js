@@ -21,7 +21,23 @@ async function getDashboardStats(req, res) {
       Cloth.find({ userId, isActive: true }).sort({ wearCount: -1 }).limit(5),
     ]);
 
-    return successResponse(res, { total, byStatus, byCategory, topWorn }, 'Dashboard stats fetched');
+    const statusCounts = byStatus.reduce((acc, row) => {
+      acc[row._id || 'unknown'] = row.count;
+      return acc;
+    }, {});
+    const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const outfitsThisWeek = await Outfit.countDocuments({ userId, wornDate: { $gte: weekStart } });
+
+    return successResponse(res, {
+      total,
+      totalCloths: total,
+      cleanItems: statusCounts.clean || 0,
+      dirtyItems: (statusCounts.dirty || 0) + (statusCounts.in_wash || 0),
+      byStatus,
+      byCategory,
+      topWorn,
+      outfitsThisWeek,
+    }, 'Dashboard stats fetched');
   } catch (err) {
     return errorResponse(res, err.message, 500);
   }
