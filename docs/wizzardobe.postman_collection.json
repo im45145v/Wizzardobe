@@ -1,0 +1,391 @@
+{
+  "info": {
+    "name": "Wizzardobe API",
+    "description": "WardrobeAI (Wizzardobe) - Complete API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000", "type": "string" },
+    { "key": "token", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": { "mode": "raw", "raw": "{\"name\":\"Test User\",\"email\":\"test@example.com\",\"password\":\"password123\"}" }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": { "mode": "raw", "raw": "{\"email\":\"demo@wizzardobe.com\",\"password\":\"demo1234\"}" }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/auth/profile"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/profile",
+            "body": { "mode": "raw", "raw": "{\"profile\":{\"gender\":\"male\",\"bodyType\":\"athletic\",\"stylePreference\":\"casual\"}}" }
+          }
+        },
+        {
+          "name": "Save API Key",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/api-key",
+            "body": { "mode": "raw", "raw": "{\"openaiApiKey\":\"sk-...\"}" }
+          }
+        },
+        {
+          "name": "Onboarding",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/onboarding",
+            "body": { "mode": "raw", "raw": "{\"gender\":\"male\",\"bodyType\":\"athletic\",\"stylePreference\":\"casual\",\"occasions\":[\"casual\",\"work\"]}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wardrobe",
+      "item": [
+        {
+          "name": "List Clothes",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/wardrobe"
+          }
+        },
+        {
+          "name": "Add Clothing (multipart)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/wardrobe",
+            "body": { "mode": "formdata", "formdata": [
+              { "key": "name", "value": "Blue T-Shirt", "type": "text" },
+              { "key": "category", "value": "top", "type": "text" },
+              { "key": "color", "value": "blue", "type": "text" },
+              { "key": "material", "value": "cotton", "type": "text" },
+              { "key": "occasions", "value": "[\"casual\"]", "type": "text" },
+              { "key": "purchasePrice", "value": "25", "type": "text" },
+              { "key": "image", "src": "", "type": "file" }
+            ]}
+          }
+        },
+        {
+          "name": "Get Clothing",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/wardrobe/:id"
+          }
+        },
+        {
+          "name": "Update Clothing",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/wardrobe/:id",
+            "body": { "mode": "raw", "raw": "{\"name\":\"Updated Name\"}" }
+          }
+        },
+        {
+          "name": "Delete Clothing",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/wardrobe/:id"
+          }
+        },
+        {
+          "name": "Mark Worn",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/wardrobe/:id/wear"
+          }
+        },
+        {
+          "name": "Update Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/wardrobe/:id/status",
+            "body": { "mode": "raw", "raw": "{\"status\":\"dirty\"}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Outfits",
+      "item": [
+        {
+          "name": "Suggest Outfit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/outfits/suggest",
+            "body": { "mode": "raw", "raw": "{\"occasion\":\"casual\",\"weather\":\"warm\"}" }
+          }
+        },
+        {
+          "name": "List Suggestions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/outfits/suggestions"
+          }
+        },
+        {
+          "name": "Rate Suggestion",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/outfits/suggestions/:id/rate",
+            "body": { "mode": "raw", "raw": "{\"rating\":5}" }
+          }
+        },
+        {
+          "name": "Wear Suggestion",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/outfits/suggestions/:id/wear"
+          }
+        },
+        {
+          "name": "Judge Outfit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/outfits/judge",
+            "body": { "mode": "raw", "raw": "{\"clothingIds\":[\"id1\",\"id2\"],\"occasion\":\"work\"}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Laundry",
+      "item": [
+        {
+          "name": "List Laundry",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/laundry"
+          }
+        },
+        {
+          "name": "Update Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/laundry/:id",
+            "body": { "mode": "raw", "raw": "{\"status\":\"clean\"}" }
+          }
+        },
+        {
+          "name": "Get Overdue",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/laundry/overdue"
+          }
+        },
+        {
+          "name": "Get Stats",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/laundry/stats"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shopping",
+      "item": [
+        {
+          "name": "Analyze Gaps",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/shopping/gaps"
+          }
+        },
+        {
+          "name": "List Wishlist",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/shopping/wishlist"
+          }
+        },
+        {
+          "name": "Add Wishlist Item",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/shopping/wishlist",
+            "body": { "mode": "raw", "raw": "{\"name\":\"White Linen Shirt\",\"category\":\"top\",\"estimatedPrice\":50}" }
+          }
+        },
+        {
+          "name": "Update Wishlist Item",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/shopping/wishlist/:id",
+            "body": { "mode": "raw", "raw": "{\"purchased\":true}" }
+          }
+        },
+        {
+          "name": "Delete Wishlist Item",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/shopping/wishlist/:id"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/analytics/dashboard"
+          }
+        },
+        {
+          "name": "Most Worn",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/analytics/most-worn"
+          }
+        },
+        {
+          "name": "Least Worn",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/analytics/least-worn"
+          }
+        },
+        {
+          "name": "Cost Per Wear",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/analytics/cost-per-wear"
+          }
+        },
+        {
+          "name": "Style Persona",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/analytics/persona"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stylist",
+      "item": [
+        {
+          "name": "Pack Trip",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/stylist/pack-trip",
+            "body": { "mode": "raw", "raw": "{\"destination\":\"Paris\",\"days\":7,\"occasions\":[\"casual\",\"formal\"]}" }
+          }
+        },
+        {
+          "name": "Build Capsule",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/stylist/capsule",
+            "body": { "mode": "raw", "raw": "{\"style\":\"minimalist\",\"itemCount\":10}" }
+          }
+        },
+        {
+          "name": "Seasonal Refresh",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/stylist/seasonal-refresh",
+            "body": { "mode": "raw", "raw": "{\"season\":\"spring\"}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Calendar",
+      "item": [
+        {
+          "name": "Auth URL",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/calendar/auth-url"
+          }
+        },
+        {
+          "name": "List Events",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/calendar/events"
+          }
+        },
+        {
+          "name": "Create Outfit Event",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/calendar/events",
+            "body": { "mode": "raw", "raw": "{\"date\":\"2025-01-20\",\"outfitIds\":[\"id1\"],\"title\":\"Work Monday\"}" }
+          }
+        },
+        {
+          "name": "Weekly Plan",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/calendar/weekly-plan"
+          }
+        }
+      ]
+    }
+  ]
+}
