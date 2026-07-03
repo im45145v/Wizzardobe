@@ -1,9 +1,6 @@
 # Dependencies
 node_modules/
 **/node_modules/
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
 
 # Local portable tooling
 .tools/
@@ -44,6 +41,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Database
+.data/
 *.db
 *.sqlite
 *.sqlite3
