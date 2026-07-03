@@ -21,11 +21,26 @@ const clothSchema = new mongoose.Schema(
     brand: String,
     occasionTags: [String],
     season: [String],
+    tags: [String],
+    groupIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'WardrobeGroup',
+      },
+    ],
     imageUrl: String,
     lastWornDate: Date,
     wearCount: {
       type: Number,
       default: 0,
+    },
+    wearsSinceWash: {
+      type: Number,
+      default: 0,
+    },
+    maxWearsBeforeLaundry: {
+      type: Number,
+      min: 1,
     },
     status: {
       type: String,
@@ -53,6 +68,11 @@ const clothSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+    disabledReason: String,
   },
   { timestamps: true }
 );

@@ -6,6 +6,9 @@ const { successResponse, errorResponse } = require('../utils/helpers');
 const { encrypt } = require('../services/encryptionService');
 
 function generateTokens(userId) {
+  if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
+    throw new Error('JWT_SECRET and JWT_REFRESH_SECRET are required');
+  }
   const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '15m',
   });
@@ -13,6 +16,20 @@ function generateTokens(userId) {
     expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   });
   return { token, refreshToken };
+}
+
+function publicUser(user) {
+  return {
+    id: user._id,
+    _id: user._id,
+    email: user.email,
+    name: user.name,
+    profile: user.profile,
+    settings: user.settings,
+    hasOpenAIKey: Boolean(user.openaiApiKey),
+    hasWeatherKey: Boolean(user.weatherApiKey),
+    calendarConnected: Boolean(user.googleCalendar?.accessToken),
+  };
 }
 
 async function register(req, res) {
@@ -31,7 +48,7 @@ async function register(req, res) {
     });
 
     const { token, refreshToken } = generateTokens(user._id);
-    return successResponse(res, { token, refreshToken, user: { id: user._id, email: user.email, name: user.name } }, 'Registered successfully', 201);
+    return successResponse(res, { token, refreshToken, user: publicUser(user) }, 'Registered successfully', 201);
   } catch (err) {
     return errorResponse(res, err.message, 500);
   }
@@ -52,7 +69,7 @@ async function login(req, res) {
     return successResponse(res, {
       token,
       refreshToken,
-      user: { id: user._id, email: user.email, name: user.name, profile: user.profile, settings: user.settings },
+      user: publicUser(user),
     }, 'Login successful');
   } catch (err) {
     return errorResponse(res, err.message, 500);
@@ -76,7 +93,7 @@ async function refresh(req, res) {
 
 async function getProfile(req, res) {
   try {
-    return successResponse(res, { user: req.user }, 'Profile fetched');
+    return successResponse(res, { user: publicUser(req.user) }, 'Profile fetched');
   } catch (err) {
     return errorResponse(res, err.message, 500);
   }
@@ -88,7 +105,7 @@ async function updateProfile(req, res) {
     if (error) return errorResponse(res, error.details[0].message, 400);
 
     const updatedUser = await User.findByIdAndUpdate(req.user._id, value, { new: true, runValidators: true });
-    return successResponse(res, { user: updatedUser }, 'Profile updated');
+    return successResponse(res, { user: publicUser(updatedUser) }, 'Profile updated');
   } catch (err) {
     return errorResponse(res, err.message, 500);
   }
@@ -98,11 +115,11 @@ async function updateApiKey(req, res) {
   try {
     const { openaiApiKey, weatherApiKey } = req.body;
     const update = {};
-    if (openaiApiKey) update.openaiApiKey = encrypt(openaiApiKey);
-    if (weatherApiKey) update.weatherApiKey = encrypt(weatherApiKey);
+    if (openaiApiKey !== undefined) update.openaiApiKey = openaiApiKey ? encrypt(openaiApiKey) : null;
+    if (weatherApiKey !== undefined) update.weatherApiKey = weatherApiKey ? encrypt(weatherApiKey) : null;
 
-    await User.findByIdAndUpdate(req.user._id, update);
-    return successResponse(res, {}, 'API key updated');
+    const updatedUser = await User.findByIdAndUpdate(req.user._id, update, { new: true });
+    return successResponse(res, { user: publicUser(updatedUser) }, 'API key updated');
   } catch (err) {
     return errorResponse(res, err.message, 500);
   }
@@ -110,15 +127,20 @@ async function updateApiKey(req, res) {
 
 async function onboarding(req, res) {
   try {
-    const { error, value } = onboardingSchema.validate(req.body);
+    const { openaiApiKey, weatherApiKey, city, ...profileBody } = req.body;
+    if (city && !profileBody.location) profileBody.location = city;
+
+    const { error, value } = onboardingSchema.validate(profileBody);
     if (error) return errorResponse(res, error.details[0].message, 400);
 
     const update = { profile: value };
+    if (openaiApiKey) update.openaiApiKey = encrypt(openaiApiKey);
+    if (weatherApiKey) update.weatherApiKey = encrypt(weatherApiKey);
     const updatedUser = await User.findByIdAndUpdate(req.user._id, update, { new: true });
-    return successResponse(res, { user: updatedUser }, 'Onboarding complete');
+    return successResponse(res, { user: publicUser(updatedUser) }, 'Onboarding complete');
   } catch (err) {
     return errorResponse(res, err.message, 500);
   }
 }
 
-module.exports = { register, login, refresh, getProfile, updateProfile, updateApiKey, onboarding };
+module.exports = { register, login, refresh, getProfile, updateProfile, updateApiKey, onboarding, publicUser };

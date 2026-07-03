@@ -34,7 +34,7 @@ async function autoTagCloth(apiKey, imageUrl) {
     const fs = require('fs');
     const path = require('path');
     const uploadsDir = path.resolve(process.cwd(), 'uploads');
-    const filePath = path.resolve(imageUrl.startsWith('/') ? imageUrl : path.join(process.cwd(), imageUrl));
+    const filePath = path.resolve(path.isAbsolute(imageUrl) ? imageUrl : path.join(process.cwd(), imageUrl));
     if (!filePath.startsWith(uploadsDir)) {
       throw new Error('Invalid file path: must be within uploads directory');
     }

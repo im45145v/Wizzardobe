@@ -18,6 +18,15 @@ const suggestionSchema = new mongoose.Schema(
       },
     ],
     mode: String,
+    occasion: String,
+    targetDate: Date,
+    needs: String,
+    score: Number,
+    source: {
+      type: String,
+      enum: ['rule', 'ai'],
+      default: 'rule',
+    },
     weatherData: {
       type: mongoose.Schema.Types.Mixed,
     },

@@ -12,6 +12,12 @@ const statusColors = {
   in_wash: 'bg-amber-900/50 text-amber-400 border-amber-700',
 }
 
+const imageSrc = (url) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  return `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${url}`
+}
+
 export default function ClothCard({ cloth }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -45,8 +51,8 @@ export default function ClothCard({ cloth }) {
     onError: () => toast.error('Failed to delete item'),
   })
 
-  const lastWorn = cloth.lastWorn
-    ? new Date(cloth.lastWorn).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const lastWorn = cloth.lastWornDate
+    ? new Date(cloth.lastWornDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : 'Never worn'
 
   return (
@@ -58,7 +64,7 @@ export default function ClothCard({ cloth }) {
       {/* Image */}
       <div className="relative aspect-square overflow-hidden">
         {cloth.imageUrl ? (
-          <img src={cloth.imageUrl} alt={cloth.name} className="w-full h-full object-cover" />
+          <img src={imageSrc(cloth.imageUrl)} alt={cloth.name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-violet-900/40 to-pink-900/40 flex items-center justify-center">
             <span className="text-4xl">👕</span>
@@ -112,13 +118,15 @@ export default function ClothCard({ cloth }) {
           )}
         </div>
 
-        {cloth.occasion?.slice(0, 2).map((occ) => (
+        {cloth.occasionTags?.slice(0, 2).map((occ) => (
           <span key={occ} className="inline-block text-xs px-2 py-0.5 bg-[#2d2d44] text-gray-400 rounded-full mr-1 mb-1">
             {occ}
           </span>
         ))}
 
         <p className="text-xs text-gray-500 mt-1">Last worn: {lastWorn}</p>
+        <p className="text-xs text-gray-500">Wears since wash: {cloth.wearsSinceWash || 0}/{cloth.maxWearsBeforeLaundry || 'auto'}</p>
+        {cloth.disabled && <p className="text-xs text-amber-300 mt-1">Disabled: {cloth.disabledReason || 'excluded from suggestions'}</p>}
 
         {/* Status changer */}
         <div className="relative mt-2">

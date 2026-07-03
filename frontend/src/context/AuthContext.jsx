@@ -16,6 +16,7 @@ export function AuthProvider({ children }) {
         .then((res) => setUser(res.data.user || res.data))
         .catch(() => {
           localStorage.removeItem('wardrobeai_token')
+          localStorage.removeItem('wardrobeai_refresh_token')
           setToken(null)
         })
         .finally(() => setIsLoading(false))
@@ -24,14 +25,16 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  const loginUser = (newToken, userData) => {
+  const loginUser = (newToken, userData, refreshToken) => {
     localStorage.setItem('wardrobeai_token', newToken)
+    if (refreshToken) localStorage.setItem('wardrobeai_refresh_token', refreshToken)
     setToken(newToken)
     setUser(userData)
   }
 
   const logout = () => {
     localStorage.removeItem('wardrobeai_token')
+    localStorage.removeItem('wardrobeai_refresh_token')
     setToken(null)
     setUser(null)
   }

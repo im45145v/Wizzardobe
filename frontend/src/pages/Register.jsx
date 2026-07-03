@@ -17,8 +17,8 @@ export default function Register() {
     setLoading(true)
     try {
       const res = await registerApi({ name: form.name, email: form.email, password: form.password })
-      const { token, user } = res.data
-      login(token, user)
+      const { token, refreshToken, user } = res.data
+      login(token, user, refreshToken)
       toast.success('Account created!')
       navigate('/onboarding')
     } catch (err) {

@@ -35,6 +35,7 @@ const userSchema = new mongoose.Schema(
       },
       occasions: [String],
       location: String,
+      profileImageUrl: String,
     },
     settings: {
       cooldownDays: {

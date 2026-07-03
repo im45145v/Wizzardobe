@@ -30,7 +30,7 @@ export default function Dashboard() {
   })
 
   const latestSuggestion = suggestions?.suggestions?.[0] || suggestions?.[0]
-  const overdueCount = overdue?.items?.length || overdue?.length || 0
+  const overdueCount = overdue?.count || overdue?.cloths?.length || 0
 
   return (
     <div className="space-y-6">
@@ -98,8 +98,8 @@ export default function Dashboard() {
             {suggestions.suggestions.slice(1, 5).map(s => (
               <div key={s._id} className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4">
                 <p className="text-xs text-gray-500 mb-2">{new Date(s.createdAt).toLocaleDateString()}</p>
-                <div className="flex flex-wrap gap-1">{(s.items||[]).slice(0,4).map((item,i)=>(
-                  <span key={i} className="text-xs px-2 py-0.5 bg-[#2d2d44] text-gray-300 rounded-full">{typeof item==='string'?item:item.name}</span>
+                <div className="flex flex-wrap gap-1">{(s.outfitItems || s.items || []).slice(0,4).map((item,i)=>(
+                  <span key={i} className="text-xs px-2 py-0.5 bg-[#2d2d44] text-gray-300 rounded-full">{typeof item==='string'?item:item.clothName || item.name}</span>
                 ))}</div>
               </div>
             ))}

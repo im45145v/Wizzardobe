@@ -23,11 +23,10 @@ export default function Onboarding() {
   const toggleOcc = (o) => set('occasions', data.occasions.includes(o) ? data.occasions.filter(x=>x!==o) : [...data.occasions, o])
 
   const handleFinish = async () => {
-    if (!data.openaiApiKey) return toast.error('OpenAI API key is required')
     setLoading(true)
     try {
-      await saveOnboarding(data)
-      updateUser({ onboarded: true })
+      const res = await saveOnboarding(data)
+      updateUser({ ...res.data.user, onboarded: true })
       toast.success('Profile set up!')
       navigate('/dashboard')
     } catch (err) {
@@ -148,7 +147,7 @@ export default function Onboarding() {
             <button onClick={() => setStep(s=>s+1)} className="flex-1 py-3 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 text-white rounded-lg font-semibold">Next</button>
           ) : (
             <button onClick={handleFinish} disabled={loading} className="flex-1 py-3 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 text-white rounded-lg font-semibold disabled:opacity-60">
-              {loading ? 'Saving...' : 'Get Started 🎉'}
+              {loading ? 'Saving...' : 'Get Started'}
             </button>
           )}
         </div>

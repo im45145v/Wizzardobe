@@ -15,8 +15,8 @@ export default function Login() {
     setLoading(true)
     try {
       const res = await loginApi(form)
-      const { token, user } = res.data
-      login(token, user)
+      const { token, refreshToken, user } = res.data
+      login(token, user, refreshToken)
       toast.success('Welcome back!')
       navigate('/dashboard')
     } catch (err) {

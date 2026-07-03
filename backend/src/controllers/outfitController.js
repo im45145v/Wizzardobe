@@ -3,11 +3,12 @@ const path = require('path');
 const Cloth = require('../models/Cloth');
 const Outfit = require('../models/Outfit');
 const Suggestion = require('../models/Suggestion');
-const LaundryLog = require('../models/LaundryLog');
-const { successResponse, errorResponse, buildOutfitPrompt, getDaysAgo } = require('../utils/helpers');
+const { successResponse, errorResponse, buildOutfitPrompt } = require('../utils/helpers');
 const { decrypt } = require('../services/encryptionService');
 const openaiService = require('../services/openaiService');
 const visionService = require('../services/visionService');
+const { generateRuleSuggestion } = require('../services/outfitEngine');
+const { markClothWorn } = require('../services/wearService');
 
 // In-memory rate limiting: { userId: [timestamps] }
 const aiRequestLog = new Map();
@@ -29,38 +30,63 @@ async function suggest(req, res) {
       return errorResponse(res, 'Rate limit exceeded: 20 AI suggestions per hour', 429);
     }
 
-    const { mode = 'safe', occasion, weather } = req.body;
+    const {
+      mode = 'safe',
+      occasion,
+      weather,
+      targetDate,
+      needs,
+      season,
+      groupIds = [],
+      cleanOnly = true,
+    } = req.body;
 
     const cooldownDays = req.user.settings?.cooldownDays || 3;
-    const cooldownDate = new Date(Date.now() - cooldownDays * 24 * 60 * 60 * 1000);
 
-    const cleanClothes = await Cloth.find({
+    const wardrobe = await Cloth.find({
       userId: req.user._id,
       isActive: true,
-      status: 'clean',
-      $or: [{ lastWornDate: { $lt: cooldownDate } }, { lastWornDate: null }],
     });
 
-    if (cleanClothes.length === 0) {
-      return errorResponse(res, 'No clean clothes available for suggestion', 400);
+    if (wardrobe.length === 0) {
+      return errorResponse(res, 'Add clothes to your wardrobe before requesting a suggestion', 400);
     }
 
     const pastRatings = await Suggestion.find({ userId: req.user._id, rating: { $gte: 4 } })
       .sort({ createdAt: -1 })
       .limit(5);
 
-    let outfitItems = [];
-    let aiReasoning = 'AI suggestion not available';
+    const context = {
+      occasion,
+      weather,
+      targetDate,
+      needs,
+      season,
+      groupIds: Array.isArray(groupIds) ? groupIds : [groupIds].filter(Boolean),
+      cleanOnly,
+      cooldownDays,
+      includeOptional: mode !== 'safe',
+    };
+
+    const ruleSuggestion = generateRuleSuggestion(wardrobe, context, req.user.settings || {}, pastRatings);
+    if (!ruleSuggestion) {
+      return errorResponse(res, 'No available clothes match your filters, laundry status, and cooldown settings', 400);
+    }
+
+    let outfitItems = ruleSuggestion.outfitItems;
+    let aiReasoning = ruleSuggestion.aiReasoning;
+    let score = ruleSuggestion.score;
+    let source = 'rule';
 
     if (req.user.openaiApiKey) {
       try {
         const decryptedKey = decrypt(req.user.openaiApiKey);
         const prompt = buildOutfitPrompt(
-          cleanClothes,
+          wardrobe.filter((item) => outfitItems.some((selected) => String(selected.clothId) === String(item._id))),
           req.user.profile,
-          new Date().toDateString(),
+          targetDate || new Date().toDateString(),
           weather || null,
-          occasion ? [occasion] : [],
+          [occasion, needs].filter(Boolean),
           mode,
           pastRatings
         );
@@ -70,40 +96,35 @@ async function suggest(req, res) {
         const jsonMatch = aiResponse.match(/```json\n?([\s\S]*?)\n?```/) || aiResponse.match(/(\{[\s\S]*\})/);
         parsed = jsonMatch ? JSON.parse(jsonMatch[1]) : JSON.parse(aiResponse);
 
-        outfitItems = (parsed.items || []).map((item) => {
-          const cloth = cleanClothes.find((c) => String(c._id) === String(item.clothId));
-          return {
-            clothId: item.clothId,
-            clothName: item.clothName || (cloth ? cloth.name : 'Unknown'),
-            imageUrl: cloth ? cloth.imageUrl : null,
-          };
-        });
-        aiReasoning = parsed.reasoning || '';
+        const allowedIds = new Set(outfitItems.map((item) => String(item.clothId)));
+        const aiItems = (parsed.items || [])
+          .filter((item) => allowedIds.has(String(item.clothId)))
+          .map((item) => {
+            const cloth = wardrobe.find((c) => String(c._id) === String(item.clothId));
+            return {
+              clothId: item.clothId,
+              clothName: item.clothName || (cloth ? cloth.name : 'Unknown'),
+              imageUrl: cloth ? cloth.imageUrl : null,
+              category: cloth ? cloth.category : undefined,
+            };
+          });
+        if (aiItems.length) outfitItems = aiItems;
+        aiReasoning = parsed.reasoning || aiReasoning;
+        source = 'ai';
       } catch (e) {
         console.error('AI suggestion failed:', e.message);
-        // Fallback: pick random items
-        const tops = cleanClothes.filter((c) => c.category === 'top');
-        const bottoms = cleanClothes.filter((c) => c.category === 'bottom');
-        const shoes = cleanClothes.filter((c) => c.category === 'shoes');
-        if (tops[0]) outfitItems.push({ clothId: tops[0]._id, clothName: tops[0].name, imageUrl: tops[0].imageUrl });
-        if (bottoms[0]) outfitItems.push({ clothId: bottoms[0]._id, clothName: bottoms[0].name, imageUrl: bottoms[0].imageUrl });
-        if (shoes[0]) outfitItems.push({ clothId: shoes[0]._id, clothName: shoes[0].name, imageUrl: shoes[0].imageUrl });
-        aiReasoning = 'Fallback suggestion (AI unavailable)';
       }
-    } else {
-      const tops = cleanClothes.filter((c) => c.category === 'top');
-      const bottoms = cleanClothes.filter((c) => c.category === 'bottom');
-      const shoes = cleanClothes.filter((c) => c.category === 'shoes');
-      if (tops[0]) outfitItems.push({ clothId: tops[0]._id, clothName: tops[0].name, imageUrl: tops[0].imageUrl });
-      if (bottoms[0]) outfitItems.push({ clothId: bottoms[0]._id, clothName: bottoms[0].name, imageUrl: bottoms[0].imageUrl });
-      if (shoes[0]) outfitItems.push({ clothId: shoes[0]._id, clothName: shoes[0].name, imageUrl: shoes[0].imageUrl });
-      aiReasoning = 'Basic suggestion (no AI key configured)';
     }
 
     const suggestion = await Suggestion.create({
       userId: req.user._id,
       outfitItems,
       mode,
+      occasion,
+      targetDate: targetDate ? new Date(targetDate) : new Date(),
+      needs,
+      score,
+      source,
       weatherData: weather || null,
       calendarEvents: occasion ? [occasion] : [],
       aiReasoning,
@@ -155,23 +176,11 @@ async function wearSuggestion(req, res) {
     suggestion.wasWorn = true;
     await suggestion.save();
 
-    const settings = req.user.settings || {};
-    const wearBeforeDirty = settings.wearBeforeDirty || { top: 3, bottom: 3, innerwear: 1, shoes: 5, outerwear: 7 };
-
     for (const item of suggestion.outfitItems) {
       if (!item.clothId) continue;
       const cloth = await Cloth.findOne({ _id: item.clothId, userId: req.user._id, isActive: true });
       if (!cloth) continue;
-
-      cloth.lastWornDate = new Date();
-      cloth.wearCount += 1;
-
-      const threshold = wearBeforeDirty[cloth.category] || 3;
-      if (cloth.wearCount % threshold === 0) {
-        cloth.status = 'dirty';
-        await LaundryLog.create({ userId: req.user._id, clothId: cloth._id, status: 'dirty', markedAt: new Date() });
-      }
-      await cloth.save();
+      await markClothWorn(cloth, req.user);
     }
 
     return successResponse(res, { suggestion }, 'Marked as worn');
@@ -187,9 +196,15 @@ async function saveOutfit(req, res) {
       return errorResponse(res, 'Items array is required', 400);
     }
 
+    const clothIds = items.map((item) => item.clothId || item).filter(Boolean);
+    const ownedCloths = await Cloth.find({ _id: { $in: clothIds }, userId: req.user._id, isActive: true });
+    if (ownedCloths.length !== clothIds.length) {
+      return errorResponse(res, 'All outfit items must belong to your active wardrobe', 400);
+    }
+
     const outfit = await Outfit.create({
       userId: req.user._id,
-      items,
+      items: ownedCloths.map((cloth) => ({ clothId: cloth._id, clothName: cloth.name })),
       name,
       occasion,
       season,
@@ -247,4 +262,37 @@ async function judgeOutfit(req, res) {
   }
 }
 
-module.exports = { suggest, getSuggestions, rateSuggestion, wearSuggestion, saveOutfit, getOutfits, judgeOutfit };
+async function visualizeSuggestion(req, res) {
+  try {
+    const suggestion = await Suggestion.findOne({ _id: req.params.id, userId: req.user._id });
+    if (!suggestion) return errorResponse(res, 'Suggestion not found', 404);
+    if (!req.user.openaiApiKey) return errorResponse(res, 'OpenAI API key required for outfit visualization', 400);
+
+    const itemNames = suggestion.outfitItems.map((item) => item.clothName).filter(Boolean).join(', ');
+    const profile = req.user.profile || {};
+    const prompt = [
+      'Create a realistic fashion visualization of a person wearing this outfit.',
+      `Outfit items: ${itemNames}.`,
+      `Style preference: ${profile.stylePreference || 'casual'}.`,
+      profile.profileImageUrl ? 'Use the user profile image as identity inspiration if supported by the image model.' : '',
+      'Keep the outfit faithful to the listed clothing items. No logos unless listed.',
+    ].filter(Boolean).join(' ');
+
+    const decryptedKey = decrypt(req.user.openaiApiKey);
+    const image = await openaiService.generateOutfitImage(decryptedKey, prompt);
+    return successResponse(res, { image }, 'Outfit visualization generated');
+  } catch (err) {
+    return errorResponse(res, err.message, 500);
+  }
+}
+
+module.exports = {
+  suggest,
+  getSuggestions,
+  rateSuggestion,
+  wearSuggestion,
+  saveOutfit,
+  getOutfits,
+  judgeOutfit,
+  visualizeSuggestion,
+};

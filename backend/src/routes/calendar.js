@@ -4,9 +4,11 @@ const { getAuthUrl, handleCallback, getEvents, createOutfitEvent, getWeeklyPlan 
 const { protect } = require('../middleware/authMiddleware');
 
 router.get('/auth', protect, getAuthUrl);
+router.get('/auth-url', protect, getAuthUrl);
 router.get('/callback', handleCallback);
 router.get('/events', protect, getEvents);
 router.post('/events', protect, createOutfitEvent);
+router.post('/outfit-event', protect, createOutfitEvent);
 router.get('/weekly-plan', protect, getWeeklyPlan);
 
 module.exports = router;

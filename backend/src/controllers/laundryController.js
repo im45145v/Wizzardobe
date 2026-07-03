@@ -1,6 +1,6 @@
 const Cloth = require('../models/Cloth');
-const LaundryLog = require('../models/LaundryLog');
 const { successResponse, errorResponse, getDaysAgo } = require('../utils/helpers');
+const { updateClothLaundryStatus } = require('../services/wearService');
 
 async function getLaundry(req, res) {
   try {
@@ -28,26 +28,7 @@ async function updateLaundry(req, res) {
     const cloth = await Cloth.findOne({ _id: req.params.clothId, userId: req.user._id, isActive: true });
     if (!cloth) return errorResponse(res, 'Cloth not found', 404);
 
-    const prevStatus = cloth.status;
-    cloth.status = status;
-
-    if (status === 'clean' && prevStatus !== 'clean') {
-      cloth.daysOutsideClean = 0;
-      await LaundryLog.findOneAndUpdate(
-        { clothId: cloth._id, status: { $in: ['dirty', 'in_wash'] }, resolvedAt: null },
-        { status: 'clean', resolvedAt: new Date() },
-        { sort: { createdAt: -1 } }
-      );
-    } else {
-      await LaundryLog.create({
-        userId: req.user._id,
-        clothId: cloth._id,
-        status,
-        markedAt: new Date(),
-      });
-    }
-
-    await cloth.save();
+    await updateClothLaundryStatus(cloth, req.user, status);
     return successResponse(res, { cloth }, 'Laundry status updated');
   } catch (err) {
     return errorResponse(res, err.message, 500);
